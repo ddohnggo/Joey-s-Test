@@ -1,0 +1,52 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html class="no-js" xmlns="http://www.w3.org/1999/xhtml" xmlns:fb="http://www.facebook.com/2008/fbml">
+  <meta charset="utf-8">
+  <title> Joey Rhyu </title>
+  <meta name = "Joey's awesome app" context = "a blog on the Facebook platform">
+    <head>
+      <link rel="stylesheet" type="text/css" href="../assets/css/styles.css" />
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js" type="text/javascript"></script>
+      <script src="../assets/js/modernizr-latest.js"></script>
+    </head>
+
+    <div id="fb-root"></div>
+    
+  <body>     
+    {% block body %}
+    {% endblock %}
+  </body>
+
+  <div id="login-flow">
+    <fb:login-button perms="email,friends_likes,offline_access,user_checkins,publish_stream,user_likes,user_location,read_stream" show-faces="true">
+    </fb:login-button>
+  </div>
+
+  <footer> This page was created using: google appengine, python, modernizr, css3, html</footer>
+
+  <!--load the fb javascript sdk -->
+  <div id="fb-root"></div>
+  <script>
+    window.fbAsyncInit = function() {
+      FB.init({appId: '262869930403008', status: true, cookie: true,
+               xfbml: true});
+      FB.Event.subscribe('auth.logout', function(response) {
+        window.location.reload();
+      });
+    };
+    (function() {
+      var e = document.createElement('script');
+      e.async=true;
+      e.type = 'text/javascript';
+      e.src = document.location.protocol + '//connect.facebook.net/en_US/all.js';
+      e.async = true;
+      document.getElementById('fb-root').appendChild(e);
+    }());
+  </script>
+
+</html>
+
+
+
+
+     
