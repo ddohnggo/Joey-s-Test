@@ -2,11 +2,14 @@
      
 {% block body %}
      <div id="content">
-        <h1> Joey Rhyu test <br> <small> Using Modernizer, CSS, HTML5 </small> </h1>
-        <p> lorum ipsum lorum ipsum lorum ipsum lorum ipsum lorum ipsum lorum ipsum
-            lorum ipsum lorum ipsum lorum ipsum lorum ipsum lorum ipsum lorum ipsum
-            lorum ipsum lorum ipsum lorum ipsum lorum ipsum lorum ipsum lorum ipsum
-            lorum ipsum lorum ipsum lorum ipsum lorum ipsum lorum ipsum lorum ipsum 
+        <h1> <img src={{picture}}> {{fname}}'s Social Lists 
+	    <br> <small> Using Modernizer, CSS, HTML5 </small>         
+	    </h1>
+        <p> Enter in your top lists and share them with your friends! Vote for the ones you like and find new content. </p>
+        <p>
+            List <form method="post" action="/">
+            <input type="text" name="listtype"/>
+            <input type="submit"/>
         </p>
         <section>
             <p> Joey Rhyu works at Facebook </p>

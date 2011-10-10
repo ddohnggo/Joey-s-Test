@@ -3,6 +3,7 @@ version: 1
 runtime: python
 api_version: 1
 
+default_expiration: "7d"
 
 handlers:
 - url: /assets
@@ -10,4 +11,4 @@ handlers:
 
 - url: /.*
   script: main.py
-  secure: always
+  secure: optional
