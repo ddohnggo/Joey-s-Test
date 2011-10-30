@@ -46,7 +46,7 @@ os.environ[u'DJANGO_SETTINGS_MODULE'] = u'conf'
 from google.appengine.dist import use_library
 use_library('django', '1.2')
 
-from google.appengine.api import urlfetch, taskqueue
+from google.appengine.api import urlfetch, taskqueue, memcache
 from django.template.defaultfilters import register
 from django.utils import simplejson as json
 
@@ -56,14 +56,14 @@ from google.appengine.ext.webapp import template
 from google.appengine.api import urlfetch
 from google.appengine.ext.db import djangoforms
 
-FB_NONDEV_ID = '210687712331095'
-FB_NONDEV_SECRETID = '2d92ebb40913357c449332f172b1366a'
+FB_PROD_ID = '210687712331095'
+FB_PROD_SECRETID = '2d92ebb40913357c449332f172b1366a'
 
 FB_DEV_ID = '262869930403008'
 FB_DEV_SECRETID = '9dc16baa1f8dc2aa1710491019a49c6f'
 
-FB_APP_ID = '262869930403008'
-FB_SECRET_ID = '9dc16baa1f8dc2aa1710491019a49c6f'
+FB_APP_ID = '210687712331095'
+FB_SECRET_ID = '2d92ebb40913357c449332f172b1366a'
 _USER_FIELDS_API = u'name,email,picture,friends,first_name,last_name,statuses,checkins'
 
 """data models"""
@@ -97,43 +97,40 @@ class Facebook(object):
         self.access_token = None
         self.signed_request = {}
 
-
     def load_signed_request(self, signed_request):
 	    #load the user state; signed_request is used to share info between fb adn the app
         try: 
             logging.debug('Facebook class - load_signed_request - try')
             logging.debug(signed_request)
             sig, load = signed_request.split(u'.', 1)
-            #logging.debug('sig: ' + sig)
-            #logging.debug('load: ' +load)
             sig = self.base64_url_decode(sig)
-            #logging.debug('sig after base: ')
-            #logging.debug(sig)
             deload = self.base64_url_decode(load)
-            #logging.debug('deload after base')
-            #logging.debug(deload)
             data = json.loads(deload)
-            #data = json.loads(self.base64_url_decode(load))
-            #logging.debug('data after json base: ')
-            ##logging.debug(data)
+            logging.debug(sig)
+            logging.debug(load)
+            logging.debug(data)
 		    
 		    #check the signature
       	    expected_sig = hmac.new(
 		        self.app_secret, msg = load, digestmod = hashlib.sha256).digest()
-            #logging.debug('expected_sig: ')
-            #logging.debug(expected_sig)
+
+            logging.debug(expected_sig)
+            logging.debug(sig)
+            
+            self.signed_request = data
+            self.user_id = data.get(u'user_id')
+            self.access_token = data.get(u'oauth_token')
 
 		    #allow request to function for 1 day
     	    if sig == expected_sig and data[u'issued_at'] > (time.time() - 86400):
-                #logging.debug('sig == expected sig')
                 self.signed_request = data
                 self.user_id = data.get(u'user_id')
-                #logging.debug(self.user_id)
                 self.access_token = data.get(u'oauth_token')
-                ##logging.debug(self.access_token + 'access token') 
+                logging.debug('load-signed request')
+                logging.debug(data)
+                logging.debug(data.get(u'user_id'))
 		
         except ValueError, ex:
-            #logging.debug('except')
             pass  
     
     @staticmethod
@@ -145,27 +142,18 @@ class Facebook(object):
     #me = facebook.api(u'/me', {u'fields': _USER_FIELDS})
     def api(self, path, params=None, method=u'GET', domain=u'graph'):
         """Make Graph API calls"""
-        #logging.debug('in API')
-        #logging.debug(path)
         if not params:
             params = {}
         params[u'method'] = method
         if u'access_token' not in params and self.access_token:
-            #logging.debug('API access token not in params')
             params[u'access_token'] = self.access_token
-        #logging.debug(params)
         url_f = urlfetch.fetch(
             url = u'https://' + domain + u'.facebook.com' + path,
             payload = urllib.urlencode(params),
             method = urlfetch.POST,
             headers = {
                 u'Content-Type': u'application/x-www-form-urlencoded'})
-        ##logging.debug('url_f')
-        ##logging.debug(url_f)
         result = json.loads(url_f.content) 
-        ##logging.debug('result')
-        ##logging.debug(result)
-        #need to add instance API error
         return result
 
 class BaseHandler(webapp.RequestHandler):
@@ -173,170 +161,142 @@ class BaseHandler(webapp.RequestHandler):
     user = None
     
     def initialize(self, request, response):
-        #logging.debug('BaseHandler Initialize')
         super(BaseHandler, self).initialize(request, response)
-        #logging.debug(request)
-        #logging.debug(response)
 
         try: 
-            #logging.debug('BaseHandler Try - init_facebook()')           
             self.init_facebook()
         except Exception, ex: 
             #self.log_exception(ex)
             raise
 
     def init_facebook(self):
-        #logging.debug('BaseHandler - init_facebook()')           
         logging.debug('in init_facebook')
         facebook = Facebook()
-        user = None
 
-        # the initial facebook request is POST and not GET
+        # set key for memcache
+        self.key = self.request.cookies.get('fbs_' + FB_APP_ID, '')
+        #self.key = self.request.cookies.get('__utma')
+        logging.debug(self.key)
+        logging.debug(self.request.cookies)
+        logging.debug(self.request.cookies.get('fbs_'))
+        logging.debug('memcache check')
+        
+        # try to find the user in memcache
+        if self.key:
+            user = memcache.get(self.key)
+            self.user = user
+            logging.debug(self.user)
+            logging.debug('get memcache')
+            
+            # if the user is found in memacache return
+            if (self.user and u'signed_request' in self.request.POST):
+                # check to see if the user is still in the datastore
+                self.request.method = u'GET'
+                logging.debug('found in memcache')
+                return self.user
+            elif self.user: 
+                return self.user
+            # the initial facebook request is POST and not GET
         if u'signed_request' in self.request.POST:
-            #logging.debug('BaseHandler init_facebook() - if signed request check')           
             """call load_signed_request to check on fb signature"""
-            #logging.debug('SR in init_fb: ' + self.request.get('signed_request'))
             facebook.load_signed_request(self.request.get('signed_request'))
-            #logging.debug('after fb load_signed_request: ')
-            #logging.debug(facebook.user_id)
+            logging.debug(facebook.user_id)
             """we also want to change the POST request from fb to GET"""
             self.request.method = u'GET'
-#            self.set_cookie(
-#                'u', facebook.user_cookie, datetime.timedelta(minutes=1440))
+    
+            # load a user object
+            if facebook.user_id:
+                me = facebook.api(u'/me', {u'fields': _USER_FIELDS_API})
+                user = Users.get_by_key_name(facebook.user_id)
+                if user:
+                    me = facebook.api(u'/me',{u'fields': _USER_FIELDS_API})
+                    self.me = me
+                    # update access token
+                    if facebook.access_token != user.access_token:
+                        user.access_token = facebook.access_token
+                        user.put()
+                        memcache.add(self.key, user)
+    
+                    # set access_token if doesn't exist
+                    if not facebook.access_token:
+                        facebook.access_token = user.access_token
+                        memcache.add(self.key, user)
+    
+                # add new user to datastore
+                if not user and facebook.access_token:
+                    me = facebook.api(u'/me',{u'fields': _USER_FIELDS_API})
+                    self.me = me
+                    try:
+                        friendslist = [user[u'id'] for user in me[u'friends'][u'data']]  
+                        user = Users(key_name = facebook.user_id, 
+                                     user_id = facebook.user_id,
+                                     access_token = facebook.access_token, 
+                                     name = me[u'name'], 
+                                     email = me[u'email'], 
+                                     picture = me[u'picture'],
+                                     first_name = me[u'first_name'], 
+                                     last_name = me[u'last_name'],
+                                     friends = friendslist) #, checkin = foursquare, status = statuslist)
+                        user.put()
+                        memcache.add(self.key, user)
+                        logging.debug('after put and memcache add')
+                    except: 
+                        pass
+    
+                self.user = user 
+                return self.user
 
-        # load a user object
-        if facebook.user_id:
-            #logging.debug('user id exists for signed request')
-            #logging.debug('call the API method test')
-            me = facebook.api(u'/me', {u'fields': _USER_FIELDS_API})
-            #foursquare = [loc[u'place'] for loc in me[u'checkins'][u'data']]
-            #logging.debug('4sq')
-            #logging.debug(foursquare)
-            user = Users.get_by_key_name(facebook.user_id)
-            #logging.debug(user)
-            if user:
-                logging.debug('user found in datastore')
-                me = facebook.api(u'/me',{u'fields': _USER_FIELDS_API})
-                self.me = me
-                #logging.debug(me)
-                # update access token
-                if facebook.access_token != user.access_token:
-                    user.access_token = facebook.access_token
-                    user.put()
-                # set access_token if doesn't exist
-                if not facebook.access_token:
-                    facebook.access_token = user.access_token
-
-            if not user and facebook.access_token:
-                logging.debug('user does not exist in datastore')
-                logging.debug('call the API method')
-                #logging.debug(str(facebook.user_id))
-                me = facebook.api(u'/me',{u'fields': _USER_FIELDS_API})
-                self.me = me
-                try:
-                    friendslist = [user[u'id'] for user in me[u'friends'][u'data']]  
-                    #foursquare = [loc[u'place'] for loc in me[u'checkins'][u'data']]
-                    #statuslist = [stat[u'message'] for stat in me[u'statuses'][u'data']]
-                    logging.debug('in try')
-                    logging.debug('print friends')
-                    #logging.debug(friendslist)
-                    logging.debug('print 4sq')
-                    #logging.debug(foursquare)
-                    logging.debug('status')
-                    #logging.debug(statuslist)
-                    logging.debug('try to load new user in datastore')
-                    logging.debug(facebook.user_id + ' ' + facebook.access_token)
-                    logging.debug(me)
-                    logging.debug(me[u'first_name'])
-                    logging.debug(me[u'last_name'])
-                    logging.debug(me[u'name'])
-                    user = Users(key_name = facebook.user_id, 
-                        user_id = facebook.user_id,
-                        access_token = facebook.access_token, name = me[u'name'], 
-                        email = me[u'email'], picture = me[u'picture'],
-                        first_name = me[u'first_name'], last_name = me[u'last_name'],
-                        friends = friendslist) #, checkin = foursquare, status = statuslist)
-                    user.put()
-                    logging.debug('after put')
-                except: 
-                    pass
-
-        self.facebook = facebook
-        self.user = user 
-
-class ListHandler(webapp.RequestHandler):
-
+class ListHandler(BaseHandler):
     def post(self):
+        logging.debug('in list handler')
+        user = self.user
         listtype = self.request.get('listtype')
         listvalue = self.request.get_all('listvalue')
-        user = Users.get(self.request.get('pkey'))
+        logging.debug(user)
         pkey = user.key()
         uid = user.user_id
-        # if the list is empty, return an error
-#        if not listtype or listvalue:
-#            self.render(u'index', err = 'Add Values', picture=user.picture)
-#        else:
         lists = List(user_key=pkey, user_id=uid, list_topic=listtype, list_item=listvalue)
         lists.put()
 
-#        if user:
-#            logging.debug('true')
-#        else:
-#            logging.debug('false')
-#        listentry = List(user_key=pkey, user_id=uid, list_topic=listtype, list_item=listvalue)
-#        listentry.put()
-
-class ListDisplayHandler(webapp.RequestHandler):
+class ListDisplayHandler(BaseHandler):
     def get(self):
-        logging.debug(self.request.get('pkey'))
-#        user = Users.all() #(self.request.get('pkey'))
-#        uid = user.user_id
-#        fname = user.first_name
-#        picture = user.picture
-        lists = List.all()
-#        logging.debug(lists)
-        render(self, u'lists', ulists=lists)
+        user = self.user
+        if user:
+            lists = user.list_set
+            logging.debug(lists)
+            render(self, u'lists', ulists=lists)
+        else:
+            render(self, u'lists')
 
     def post(self):
-        logging.debug(self.request.get('pkey'))
-        user = Users.get(self.request.get('pkey'))
-        logging.debug('listdisplayhandler Post')
+        user = self.user
         uid = user.user_id
         fname = user.first_name
         picture = user.picture
-        lists = List.all()
-        logging.debug(user.list_set)
-        render(self, u'lists', uid=uid, fname=fname, picture=picture, ulists=user.list_set)
-        for i in user.list_set:
-            logging.debug(i.list_item)
-            logging.debug(i.list_topic)
+        lists = user.list_set
+        if user:
+            render(self, u'lists', uid=uid, fname=fname, picture=picture, ulists=lists)
+            for i in lists:
+                logging.debug(i.list_item)
+                logging.debug(i.list_topic)
+        else:
+            render(self, u'lists')
 
 class MainHandler(BaseHandler):    
-
     def get(self):
         logging.debug('MainHandler Get')
-        logging.debug(self.facebook.user_id)
-        if self.facebook.user_id:
-            #data = dict(current_user=self.user.user_id,
-                        #picture = self.user.picture)
-            #logging.debug(data)
-            uid = self.facebook.user_id 
-            fname = self.me[u'first_name']
-            picture = self.me[u'picture']
-            logging.debug(uid)
-            logging.debug(fname)
-            logging.debug(picture)
-            pkey = self.user.key()
-            render(self, u'index', uid=uid, fname=fname, picture=picture, pkey=pkey)
+        user = self.user        
+        logging.debug(self.user)
+        
+        if user:
+            uid = user.user_id 
+            fname = user.first_name
+            picture = user.picture
+            pkey = user.key()
+            render(self, u'index', uid=uid, fname=fname, picture=picture, pkey=pkey, appid=FB_APP_ID)
         else:
-            render(self, u'welcome')
+            render(self, u'welcome', appid=FB_APP_ID)
 
-    #def render(self, name, **data):
-    #    logging.debug('in render')
-    #    if data:
-    #        logging.debug('data exists')
-    #    path = os.path.join(os.path.dirname(__file__), 'views', name + '.html') 
-    #    self.response.out.write(template.render(path, data))        
 
 def render(self, name, **data):
     logging.debug('in render')

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
      
 {% block body %}
-     <div id="content">
+ <div id="content">
 	<div id="primary-panel">
         <h1> <img src={{picture}}> {{fname}}'s Social Lists </h1>
         <p class="instruction"> Enter in your top lists and share them with your friends! Vote for the ones you like and find new content. </p>
@@ -25,20 +25,23 @@
             </ul>
             <input class="button" type="submit"/>
             </form>
+        <!--
         <h2> Display Your List </h2>
             <form method = "post" action="/listdisplay">
 	        <input type="hidden" name="pkey" value={{pkey}}>
 	        <input class="button" type="submit"/>
         </p>
+        
         <section>
             <p> Joey Rhyu works at Facebook </p>
             <img src="../assets/img/me.jpg" >
         </section> 
-		</div>
-		<div id="secondary-panel">
-			Loading...
-		</div>
-	 <script>
+		-->
+	</div>
+
+	<div id="secondary-panel">
+			Loading...	
+	<script>
 	 function updateList() {
 		$.ajax({
 		  url: "/listdisplay",
@@ -47,14 +50,15 @@
 			$("#secondary-panel").html(html);
 		}	
 		});
-		setTimeout('updateList()', 4000)
+		setTimeout('updateList()', 10000)
 	}
 	updateList()
 	 </script>
+	 	</div>
+
      </div>
 {% endblock %}
 
-</html>
 
 
 
