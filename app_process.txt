@@ -1,0 +1,36 @@
+1. user goes to canvas app
+2. facebook calls a POST request - encrypting the signed_request data
+  - signed_request will contain user level information only if the user has authed
+3. / URL gets routed to mainhandler
+4. mainhandler is an extension of basehandler, which gets called
+5. basehandler
+  - initialize method is called, passing in request and response information
+    - calls init_facebook method
+  - init_facebook method
+    - initializes facebook object to facebook class
+    - checks to see whether the signed_request is in FB's POST request
+      - if it is, calls the load_signed_request method to translate signed_request
+  - load_signed_request method from facebook class
+    - step 1: split the signed_request to get signature and token split(.)
+    - step 2: decode signature with base64_url_decode
+    - step 3: decode token with base64_url_decode
+    - step 4: apply json.loads to the token 
+    - step 5: find the expected signature using app_secret, OG token, hashlib.sha256 as parameters to hmac.new().digest()
+    - step 6: check whether the sig == expected sig: set signed_request = data and userid, and token id
+  - init_facebook method
+    - after load_signed_request is rn, set the request.method = u'GET' b/c it was sent as POST 
+    - load the user object if a user_id exists 
+      - query the USERS table see if user exists
+        - if the user exists then update the token 
+        - if the token doesn't exist then use datastore's
+      - if the user and the token doesn't exist 
+        - call the fb API to get additional info and store the user in the datastore
+  - API (pass in path - /me, userfields to access in dict)
+    - add GET method to params dictionary
+    - if the token doesn't exist, add it to the dictionary
+    - fetch the URL using urlfetch.fetch(https://graph.facebook.com/me, params, POST, headers)
+    - take this value and apply the json.loads
+6. mainhandler
+  - call get method 
+     - if the user exists, then send them to index
+     - if not, send them to welcome

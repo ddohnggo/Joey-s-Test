@@ -1,0 +1,12 @@
+{% for l in ulists %}
+<p>
+    <ul>{{l.list_topic}}</ul>
+    {% for i in l.list_item %}
+        {% if l.list_item %}
+            <li>{{i}}</li>
+	    {% else %}
+	        <p> blank </p>
+        {% endif %}    
+	{% endfor %}
+</p>
+{% endfor %}
