@@ -62,9 +62,10 @@ FB_PROD_SECRETID = '2d92ebb40913357c449332f172b1366a'
 FB_DEV_ID = '262869930403008'
 FB_DEV_SECRETID = '9dc16baa1f8dc2aa1710491019a49c6f'
 
-FB_APP_ID = '210687712331095'
-FB_SECRET_ID = '2d92ebb40913357c449332f172b1366a'
-_USER_FIELDS_API = u'name,email,picture,friends,first_name,last_name,statuses,checkins'
+FB_APP_ID = '262869930403008'
+FB_SECRET_ID = '9dc16baa1f8dc2aa1710491019a49c6f'
+_USER_FIELDS_API = u'name,email,picture,friends,first_name,last_name'
+#,statuses,checkins
 
 """data models"""
 class Users(db.Model):
@@ -221,6 +222,8 @@ class BaseHandler(webapp.RequestHandler):
                     if not facebook.access_token:
                         facebook.access_token = user.access_token
                         memcache.add(self.key, user)
+                        
+                    memcache.add(self.key, user)
     
                 # add new user to datastore
                 if not user and facebook.access_token:
@@ -247,12 +250,23 @@ class BaseHandler(webapp.RequestHandler):
                 return self.user
 
 class ListHandler(BaseHandler):
+    def get(self):
+        user = self.user
+
+        if user:
+            uid = user.user_id 
+            fname = user.first_name
+            picture = user.picture
+            pkey = user.key()
+            render(self, u'index', uid=uid, fname=fname, picture=picture, pkey=pkey, appid=FB_APP_ID)
+
+
     def post(self):
         logging.debug('in list handler')
         user = self.user
         listtype = self.request.get('listtype')
         listvalue = self.request.get_all('listvalue')
-        logging.debug(user)
+        logging.debug(listvalue)
         pkey = user.key()
         uid = user.user_id
         lists = List(user_key=pkey, user_id=uid, list_topic=listtype, list_item=listvalue)
@@ -292,8 +306,7 @@ class MainHandler(BaseHandler):
             uid = user.user_id 
             fname = user.first_name
             picture = user.picture
-            pkey = user.key()
-            render(self, u'index', uid=uid, fname=fname, picture=picture, pkey=pkey, appid=FB_APP_ID)
+            render(self, u'index', uid=uid, fname=fname, picture=picture, appid=FB_APP_ID)
         else:
             render(self, u'welcome', appid=FB_APP_ID)
 
