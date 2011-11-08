@@ -1,7 +1,8 @@
 Top Lists
 {% for l in ulists %}
 <p>
-    <ul>{{l.list_topic}}</ul>
+    <ul>{{l.list_topic}} <button type="button"> Edit </button> 
+        <button type="button"> Delete </button> </ul>
     {% for i in l.list_item %}
         {% if l.list_item %}
             <li>{{i}}</li>

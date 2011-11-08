@@ -20,33 +20,6 @@
   <div id="login-flow">
     <fb:login-button   perms="email,friends_likes,offline_access,user_checkins,publish_stream,user_likes,user_location,read_stream" show-faces="true">
     </fb:login-button>
- 
-    <fb:add-to-timeline></fb:add-to-timeline>
-  </div>
-
-  <!--load the fb javascript sdk -->
-  <div id="fb-root"></div>
-  <script>
-    window.fbAsyncInit = function() {
-      FB.init({appId: '{{appid}}', status: true, cookie: true,
-               xfbml: true});
-      FB.Event.subscribe('auth.logout', function(response) {
-        window.location.reload();
-      })
-      FB.Event.subscribe('auth.login', function(response) {
-	    top.location.href="http://apps.facebook.com/joeyrhyuapp";
-       });
-    };
-    (function() {
-      var e = document.createElement('script');
-      e.async=true;
-      e.type = 'text/javascript';
-      e.src = document.location.protocol + '//connect.facebook.net/en_US/all.js';
-      e.async = true;
-      document.getElementById('fb-root').appendChild(e);
-    }());
-  </script>
-  
 
 	<script type="text/javascript">
 	var _gaq = _gaq || [];
@@ -59,14 +32,51 @@
 	  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
 	})(); 
 	</script>
+
 	
     </head>
-
-    <div id="fb-root"></div>
     
   <body>     
+  
+  <!--load the fb javascript sdk -->
+  <div id="fb-root"></div>
+  <script>
+    window.fbAsyncInit = function() {
+      FB.init({appId: '{{appid}}', status: true, cookie: true,
+               xfbml: true});
+      FB.Event.subscribe('auth.logout', function(response) {
+        window.location.reload();
+      })
+      //FB.Event.subscribe('auth.login', function(response) {
+	  //  top.location.href="http://apps.facebook.com/joeyrhyuapp";
+      // });
+    };
+    (function() {
+      var e = document.createElement('script');
+      e.async=true;
+      e.type = 'text/javascript';
+      e.src = document.location.protocol + '//connect.facebook.net/en_US/all.js';
+      e.async = true;
+      document.getElementById('fb-root').appendChild(e);
+    }());
+  </script>
+  
+  <!-- jquery loading animation -->
+  <div id="loading">
+  <p><img src="../assets/img/ajax-loader.gif" /> Please Wait </p>
+  </div>
+  
+  <script>
+  $("#loading").ajaxStart(function() {
+      $(this).show();
+  }).ajaxComplete(function() {
+      $(this).hide();
+  });
+  </script>	
+  
     {% block body %}
     {% endblock %}
+
   </body>
  
 </html>
