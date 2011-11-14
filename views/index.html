@@ -10,21 +10,27 @@
             <form name="list" action="">
             <ul>
                 <li style="margin-bottom: 12px;"> 
-	                List Topic <input class="inputfield" type="text" name="listtype" />                
+	                List Topic <input class="inputfield" type="text" name="listtype" id="listtype" />                
 	            <li style="margin-bottom: 12px;"> 
-                    Item #1 <input class="inputfield" type="text" name="listvalue">
+                    Item #1 <input id='item1' class="clonedInput" type="text" name="listvalue" />
+	        <!--           
 	            <li style="margin-bottom: 12px;"> 
-                    Item #2 <input class="inputfield" type="text" name="listvalue">
+                    Item #2 <input class="clonedInput" type="text" name="listvalue">
+	        
 	            <li style="margin-bottom: 12px;"> 
                     Item #3 <input class="inputfield" type="text" name="listvalue">
 	            <li style="margin-bottom: 12px;"> 
                     Item #4 <input class="inputfield" type="text" name="listvalue">
 	            <li style="margin-bottom: 12px;"> 
                     Item #5 <input class="inputfield" type="text" name="listvalue">
+            -->
             </ul>
             <input class="button" id="listbutton" type="submit" value="List" />
+            <input type="button" id="btnAdd" value="add another item" />
+            <input type="button" id="btnDel" value="remove an item" />
             </form>
 
+        <!-- submit ajax -->
         <script>
         $(function() {
            $(".button").click(function() {
@@ -42,8 +48,30 @@
         
     	</div>
 
+    <!-- Create new list options WIP -->
+    <script>
+    $(function () {
+        $("#btnAdd").click(function() {
+          var num = $(".clonedInput").length;
+          var newNum = new Number(num+1);
+           
+          // add li items to the ul          
+          var newElem = $('#item' + num).clone().attr('class', 'item' + newNum);
+          //newElem.children(':first').attr('type', 'text').attr('name', 'listvalue');
+          
+          alert(num);
+          //alert("<li id='li" + num + '\'' + " style='margin-bottom: 12px;'/>");
+          $("<li id='li'" + num + '\'' + " style='margin-bottom: 12px;'/>").appendTo('#primary-panel ul').html('Item #' + newNum);
+          $('#li' + num).after(newElem);
+          
+          $('#btnDel').attr('disabled','');
+          });
+        $('#btnDel').attr('disabled', 'disabled');
+    });
+    </script>
+
 	<div id="secondary-panel">
-			Loading...	
+	<img id='image' src="../assets/img/ajax-loader.gif" />	
 	<script>
 	 function updateList() {
 		$.ajax({
@@ -57,9 +85,9 @@
 	}
 	updateList()
 	 </script>
-	 	</div>
+	 </div>
 
-     </div>
+ </div>
      
 {% endblock %}
 

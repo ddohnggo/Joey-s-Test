@@ -20,7 +20,9 @@
   <div id="login-flow">
     <fb:login-button   perms="email,friends_likes,offline_access,user_checkins,publish_stream,user_likes,user_location,read_stream" show-faces="true">
     </fb:login-button>
+  </div>
 
+   <!-- Google Analytics -->
 	<script type="text/javascript">
 	var _gaq = _gaq || [];
 	_gaq.push(['_setAccount', 'UA-26442399-1']);
@@ -33,6 +35,33 @@
 	})(); 
 	</script>
 
+  <!-- fade in content -->
+  <script>
+   $(function() { 
+   $('#content').hide().fadeIn('slow');
+  });
+  </script>
+
+  <script>
+  $(function() {
+    $('#loading').hide();
+  });
+  </script>
+  
+  <!-- jquery loading animation for ajax calls-->
+  <div id="loading">
+  <p><img id='image' src="../assets/img/ajax-loader.gif" /> Please Wait </p>
+  </div>
+     
+  <script>
+  $(function() {
+      $("#loading").ajaxStart(function() {
+          $(this).show();
+          }).ajaxStop(function() {
+              $(this).hide();
+              });
+      });
+  </script>	
 	
     </head>
     
@@ -60,19 +89,7 @@
       document.getElementById('fb-root').appendChild(e);
     }());
   </script>
-  
-  <!-- jquery loading animation -->
-  <div id="loading">
-  <p><img src="../assets/img/ajax-loader.gif" /> Please Wait </p>
-  </div>
-  
-  <script>
-  $("#loading").ajaxStart(function() {
-      $(this).show();
-  }).ajaxComplete(function() {
-      $(this).hide();
-  });
-  </script>	
+
   
     {% block body %}
     {% endblock %}

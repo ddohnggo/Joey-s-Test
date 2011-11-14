@@ -86,6 +86,7 @@ class List(db.Model):
     user_id = db.StringProperty(required = True)
     list_topic = db.StringProperty(required = True)
     list_item = db.StringListProperty()
+    remove = db.StringProperty()
 """end data models"""
 
 class Facebook(object):
